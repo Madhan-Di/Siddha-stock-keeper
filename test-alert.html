@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Low Stock Alert</title>
+</head>
+<body>
+    <h1>Low Stock Alert Debug</h1>
+    <button onclick="clearFlag()">Clear Alert Flag</button>
+    <button onclick="checkLowStock()">Check Low Stock</button>
+    <button onclick="testAlert()">Force Show Alert</button>
+    <pre id="output"></pre>
+
+    <script>
+        function log(msg) {
+            document.getElementById('output').textContent += msg + '\n';
+            console.log(msg);
+        }
+
+        function clearFlag() {
+            sessionStorage.removeItem('lowStockAlertShown');
+            log('✓ Alert flag cleared');
+        }
+
+        async function checkLowStock() {
+            log('Checking for low stock items...');
+            
+            try {
+                const medicines = await fetch('http://localhost:5000/api/medicines').then(r => r.json());
+                log(`Found ${medicines.length} medicines`);
+                
+                const stocks = await fetch('http://localhost:5000/api/stock').then(r => r.json());
+                log(`Found ${stocks.length} stocks`);
+                
+                const lowStock = medicines.filter(m => {
+                    const stock = stocks.find(s => s.medicine_id === m._id);
+                    const qty = stock ? stock.quantity_available : 0;
+                    return qty < m.low_stock_limit;
+                });
+                
+                log(`\nLow stock items: ${lowStock.length}`);
+                lowStock.forEach(m => {
+                    const stock = stocks.find(s => s.medicine_id === m._id);
+                    log(`- ${m.medicine_name}: ${stock?.quantity_available || 0}/${m.low_stock_limit}`);
+                });
+            } catch (e) {
+                log('Error: ' + e.message);
+            }
+        }
+
+        function testAlert() {
+            clearFlag();
+            log('Flag cleared, refresh page to see alert');
+        }
+    </script>
+</body>
+</html>
